@@ -53,11 +53,6 @@ struct Quaternion
         return (x, y, z);
     }
 
-    bool IsUnit()
-    {
-        return Abs(w * w + x * x + y * y + z * z - 1) < 0.01;
-    }
-
     static void Multiply(out Quaternion q, in Quaternion r, in Quaternion s)
     {
         double rw = r.w;
