@@ -75,17 +75,22 @@ class FlyingPlayer : DoomPlayer
 {
     const cmdScale = 360.0 / 65536;
 
-    override void Tick()
+    override void HandleMovement()
     {
-        Super.Tick();
+        RotatePlayer();
+    }
+
+    override void CheckPitch() {}
+
+    void RotatePlayer()
+    {
+        Quaternion r;
+        r.FromEulerAngle(angle, pitch, roll);
 
         UserCmd cmd = player.cmd;
         double cmdYaw = cmd.yaw * cmdScale;
         double cmdPitch = -cmd.pitch * cmdScale;
         double cmdRoll = cmd.roll * cmdScale;
-
-        Quaternion r;
-        r.FromEulerAngle(angle - cmdYaw, pitch - cmdPitch, roll - cmdRoll);
 
         Quaternion s;
         s.FromEulerAngle(cmdYaw, cmdPitch, cmdRoll);
