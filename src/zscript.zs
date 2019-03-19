@@ -70,6 +70,14 @@ class FlyingPlayer : DoomPlayer
 {
     const cmdScale = 360.0 / 65536;
 
+    override void PostBeginPlay()
+    {
+        Super.PostBeginPlay();
+
+        bFly = true;
+        bNoGravity = true;
+    }
+
     override void HandleMovement()
     {
         RotatePlayer();
@@ -77,7 +85,7 @@ class FlyingPlayer : DoomPlayer
 
     override void CheckPitch() {}
 
-    void RotatePlayer()
+    virtual void RotatePlayer()
     {
         Quaternion r;
         r.FromEulerAngle(angle, pitch, roll);
