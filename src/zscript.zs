@@ -68,7 +68,19 @@ struct Quaternion
 
 class FlyingPlayer : DoomPlayer
 {
-    const cmdScale = 360.0 / 65536;
+    Default
+    {
+        Speed 320 / ticRate;
+    }
+
+    const maxYaw = 65536.0;
+    const maxPitch = 65536.0;
+    const maxRoll = 65536.0;
+    const maxForwardMove = 12800;
+    const maxSideMove = 10240;
+    const maxUpMove = 768;
+
+    const trichordingCVar = "G_Trichording";
 
     override void PostBeginPlay()
     {
@@ -81,9 +93,23 @@ class FlyingPlayer : DoomPlayer
     override void HandleMovement()
     {
         RotatePlayer();
+        MovePlayer();
     }
 
     override void CheckPitch() {}
+
+    override void MovePlayer()
+    {
+        UserCmd cmd = player.cmd;
+
+        if (cmd.forwardMove || cmd.sideMove || cmd.upMove)
+        {
+            double scale = CmdScale();
+            double fm = scale * cmd.forwardMove / maxForwardMove;
+            double sm = scale * cmd.sideMove / maxSideMove;
+            double um = scale * cmd.upMove / maxUpMove;
+        }
+    }
 
     virtual void RotatePlayer()
     {
@@ -91,9 +117,9 @@ class FlyingPlayer : DoomPlayer
         r.FromEulerAngle(angle, pitch, roll);
 
         UserCmd cmd = player.cmd;
-        double cmdYaw = cmd.yaw * cmdScale;
-        double cmdPitch = -cmd.pitch * cmdScale;
-        double cmdRoll = cmd.roll * cmdScale;
+        double cmdYaw = cmd.yaw * 360 / maxYaw;
+        double cmdPitch = -cmd.pitch * 360 / maxPitch;
+        double cmdRoll = cmd.roll * 360 / maxRoll;
 
         Quaternion s;
         s.FromEulerAngle(cmdYaw, cmdPitch, cmdRoll);
@@ -105,5 +131,24 @@ class FlyingPlayer : DoomPlayer
         A_SetAngle(newAngle, SPF_Interpolate);
         A_SetPitch(newPitch, SPF_Interpolate);
         A_SetRoll(newRoll, SPF_Interpolate);
+    }
+
+
+    virtual double CmdScale()
+    {
+        bool canStraferun = CVar.FindCVar(trichordingCVar).GetBool();
+        if (canStraferun) return speed;
+
+		UserCmd cmd = player.cmd;
+        double fm = double(cmd.forwardMove) / maxForwardMove;
+        double sm = double(cmd.sideMove) / maxSideMove;
+        double um = double(cmd.upMove) / maxUpMove;
+
+        double maxCmd = Max(Abs(fm), Abs(sm), Abs(um));
+        double total = (fm, sm, um).Length();
+
+        double scale = total ? speed * maxCmd / total : 0;
+
+        return scale;
     }
 }
