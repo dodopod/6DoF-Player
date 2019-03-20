@@ -88,12 +88,17 @@ struct Quaternion
 
 class FlyingPlayer : DoomPlayer
 {
+    Property UpMove : upMove;
+
+
     Default
     {
         Speed 320 / ticRate;
+        FlyingPlayer.UpMove 1.0;
 
         +NoGravity
     }
+
 
     const maxYaw = 65536.0;
     const maxPitch = 65536.0;
@@ -101,8 +106,12 @@ class FlyingPlayer : DoomPlayer
     const maxForwardMove = 12800;
     const maxSideMove = 10240;
     const maxUpMove = 768;
+    const stopFlying = -32768;
 
     const trichordingCVar = "G_Trichording";
+
+
+    double upMove;
 
 
     override void PostBeginPlay()
@@ -115,30 +124,29 @@ class FlyingPlayer : DoomPlayer
 
     override void HandleMovement()
     {
-        if (!bNoGravity)
-        {
-            Super.HandleMovement();
-            return;
-        }
+        //player.onground = (pos.z <= floorz) || bOnMobj || bMBFBouncer || (player.cheats & CF_NOCLIP2);
 
-        CheckQuickTurn();
-        RotatePlayer();
-        MovePlayer();
+        if (reactionTime) --reactionTime;   // Player is frozen
+        else
+        {
+            CheckQuickTurn();
+            RotatePlayer();
+            MovePlayer();
+        }
     }
 
 
+    override void CheckCrouch(bool totallyFrozen) {}
     override void CheckPitch() {}
 
 
     override void MovePlayer()
     {
-        if (!bNoGravity)
-        {
-            Super.MovePlayer();
-            return;
-        }
-
         UserCmd cmd = player.cmd;
+
+        if (IsPressed(BT_Jump)) cmd.upMove = maxUpMove;
+        if (IsPressed(BT_Crouch)) cmd.upMove = -maxUpMove;
+        if (cmd.upMove == stopFlying) cmd.upMove = 0;   // Can't stop flying
 
         if (cmd.forwardMove || cmd.sideMove || cmd.upMove)
         {
@@ -147,6 +155,8 @@ class FlyingPlayer : DoomPlayer
             double sm = scale * cmd.sideMove / maxSideMove;
             double um = scale * cmd.upMove / maxUpMove;
 
+            [fm, sm, um] = TweakSpeeds3(fm, sm, um);
+
             Vector3 forward, right, up;
             [forward, right, up] = GetAxes();
 
@@ -154,6 +164,14 @@ class FlyingPlayer : DoomPlayer
 
             Accelerate(wishVel.Unit(), wishVel.Length(), 4.0);
             BobAccelerate(wishVel.Unit(), wishVel.Length(), 4.0);
+
+            if (!(player.cheats & CF_PREDICTING)) PlayRunning();
+
+			if (player.cheats & CF_REVERTPLEASE)
+			{
+				player.cheats &= ~CF_REVERTPLEASE;
+				player.camera = player.mo;
+			}
         }
     }
 
@@ -202,6 +220,16 @@ class FlyingPlayer : DoomPlayer
         Console.Printf("Right = (%.2f, %.2f, %.2f)", right.x, right.y, right.z);
         Console.Printf("Up = (%.2f, %.2f, %.2f)", up.x, up.y, up.z);
         */
+    }
+
+
+    virtual double, double, double TweakSpeeds3(double forward, double side, double up)
+    {
+        [forward, side] = TweakSpeeds(forward, side);
+
+        up *= upMove;
+
+        return forward, side, up;
     }
 
 
@@ -267,6 +295,11 @@ class FlyingPlayer : DoomPlayer
         return forward, right, up;
     }
 
+
+    bool IsPressed(int bt)
+    {
+        return player.cmd.buttons & bt;
+    }
 
     bool JustPressed(int bt)
     {
