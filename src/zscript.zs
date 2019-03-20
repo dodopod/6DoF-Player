@@ -97,6 +97,7 @@ class FlyingPlayer : DoomPlayer
         FlyingPlayer.UpMove 1.0;
 
         +NoGravity
+        +RollSprite
     }
 
 
