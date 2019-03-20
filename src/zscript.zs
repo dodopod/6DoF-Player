@@ -91,6 +91,8 @@ class FlyingPlayer : DoomPlayer
     Default
     {
         Speed 320 / ticRate;
+
+        +NoGravity
     }
 
     const maxYaw = 65536.0;
@@ -102,24 +104,40 @@ class FlyingPlayer : DoomPlayer
 
     const trichordingCVar = "G_Trichording";
 
+
     override void PostBeginPlay()
     {
         Super.PostBeginPlay();
 
         bFly = true;
-        bNoGravity = true;
     }
+
 
     override void HandleMovement()
     {
+        if (!bNoGravity)
+        {
+            Super.HandleMovement();
+            return;
+        }
+
+        CheckQuickTurn();
         RotatePlayer();
         MovePlayer();
     }
 
+
     override void CheckPitch() {}
+
 
     override void MovePlayer()
     {
+        if (!bNoGravity)
+        {
+            Super.MovePlayer();
+            return;
+        }
+
         UserCmd cmd = player.cmd;
 
         if (cmd.forwardMove || cmd.sideMove || cmd.upMove)
@@ -132,11 +150,27 @@ class FlyingPlayer : DoomPlayer
             Vector3 forward, right, up;
             [forward, right, up] = GetAxes();
 
-            Vector3 wishVel = fm * forward - sm * right + um * up;
+            Vector3 wishVel = fm * forward + sm * right + um * up;
 
-            Accelerate(wishVel.Unit(), wishVel.Length(), 10.0);
+            Accelerate(wishVel.Unit(), wishVel.Length(), 4.0);
+            BobAccelerate(wishVel.Unit(), wishVel.Length(), 4.0);
         }
     }
+
+
+    virtual void CheckQuickTurn()
+    {
+        UserCmd cmd = player.cmd;
+
+		if (JustPressed(BT_Turn180)) player.turnticks = turn180_ticks;
+
+        if (player.turnTicks)
+        {
+            --player.turnTicks;
+            cmd.yaw = 0.5 * maxYaw / turn180_ticks;
+        }
+    }
+
 
     virtual void RotatePlayer()
     {
@@ -159,6 +193,7 @@ class FlyingPlayer : DoomPlayer
         A_SetPitch(newPitch, SPF_Interpolate);
         A_SetRoll(newRoll, SPF_Interpolate);
 
+        /*
         Vector3 forward, right, up;
         [forward, right, up] = GetAxes();
 
@@ -166,6 +201,7 @@ class FlyingPlayer : DoomPlayer
         Console.Printf("Forward = (%.2f, %.2f, %.2f)", forward.x, forward.y, forward.z);
         Console.Printf("Right = (%.2f, %.2f, %.2f)", right.x, right.y, right.z);
         Console.Printf("Up = (%.2f, %.2f, %.2f)", up.x, up.y, up.z);
+        */
     }
 
 
@@ -200,6 +236,20 @@ class FlyingPlayer : DoomPlayer
         vel += accelSpeed * wishDir;
     }
 
+
+    virtual void BobAccelerate(Vector3 wishDir, double wishSpeed, double accel)
+    {
+        double currentSpeed = player.vel dot wishDir.xy;
+
+        double addSpeed = wishSpeed - currentSpeed;
+        if (addSpeed <= 0) return;
+
+        double accelSpeed = Clamp(accel * wishSpeed, 0, addSpeed);
+
+        player.vel += accelSpeed * wishDir.xy;
+    }
+
+
     Vector3, Vector3, Vector3 GetAxes()
     {
         Quaternion r;
@@ -208,12 +258,18 @@ class FlyingPlayer : DoomPlayer
         Vector3 forward = (1, 0, 0);
         forward = r.Rotate(forward);
 
-        Vector3 right = (0, 1, 0);
+        Vector3 right = (0, -1, 0);
         right = r.Rotate(right);
 
         Vector3 up = (0, 0, 1);
         up = r.Rotate(up);
 
         return forward, right, up;
+    }
+
+
+    bool JustPressed(int bt)
+    {
+        return (player.cmd.buttons & bt) && !(player.oldButtons & bt);
     }
 }
