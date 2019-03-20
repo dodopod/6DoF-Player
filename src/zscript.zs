@@ -81,70 +81,66 @@ struct Quaternion
         return v4.GetXyz();
     }
 
-    static void Add(out Quaternion q, in Quaternion r, in Quaternion s)
+    static void Add(out Quaternion res, in Quaternion lhs, in Quaternion rhs)
     {
-        q.w = r.w + s.w;
-        q.x = r.x + s.x;
-        q.y = r.y + s.y;
-        q.z = r.z + s.z;
+        res.w = lhs.w + rhs.w;
+        res.x = lhs.x + rhs.x;
+        res.y = lhs.y + rhs.y;
+        res.z = lhs.z + rhs.z;
     }
 
-    static void Sub(out Quaternion q, in Quaternion r, in Quaternion s)
+    static void Subtract(out Quaternion res, in Quaternion lhs, in Quaternion rhs)
     {
-        q.w = r.w - s.w;
-        q.x = r.x - s.x;
-        q.y = r.y - s.y;
-        q.z = r.z - s.z;
+        res.w = lhs.w - rhs.w;
+        res.x = lhs.x - rhs.x;
+        res.y = lhs.y - rhs.y;
+        res.z = lhs.z - rhs.z;
     }
 
-    static void Scale(out Quaternion q, in double a, in Quaternion r)
+    static void Scale(out Quaternion res, in double lhs, in Quaternion rhs)
     {
-        q.w = a * r.w;
-        q.x = a * r.x;
-        q.y = a * r.y;
-        q.z = a * r.z;
+        res.w = lhs * rhs.w;
+        res.x = lhs * rhs.x;
+        res.y = lhs * rhs.y;
+        res.z = lhs * rhs.z;
     }
 
-    static void Multiply(out Quaternion q, in Quaternion r, in Quaternion s)
+    static void Multiply(out Quaternion res, in Quaternion lhs, in Quaternion rhs)
     {
-        double rw = r.w;
-        Vector3 rv = r.GetXyz();
-        double sw = s.w;
-        Vector3 sv = s.GetXyz();
+        double lw = lhs.w;
+        Vector3 lv = lhs.GetXyz();
+        double rw = rhs.w;
+        Vector3 rv = rhs.GetXyz();
 
-        q.w = sw * rw - (sv dot rv);
-        q.SetXyz(sw * rv + rw * sv + (rv cross sv));
+        res.w = rw * lw - (rv dot lv);
+        res.SetXyz(rw * lv + lw * rv + (lv cross rv));
     }
 
-    static double DotProduct(in Quaternion q, in Quaternion r)
+    static double DotProduct(in Quaternion lhs, in Quaternion rhs)
     {
-        return q.w * r.w + q.x * r.x + q.y * r.y + q.z * r.z;
+        return lhs.w * rhs.w + lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
     }
 
-    static void Slerp(out Quaternion q, in Quaternion r, in Quaternion s, double t)
+    static void Slerp(out Quaternion res, in Quaternion start, in Quaternion end, double t)
     {
-        Quaternion r2;
-        r2.Copy(r);
-        Quaternion s2;
-        s2.Copy(s);
+        Quaternion s;
+        s.Copy(start);
+        Quaternion e;
+        e.Copy(end);
 
-        double dp = DotProduct(r2, s2);
+        double dp = DotProduct(s, e);
 
         if (dp < 0)
         {
-            s2.w *= -1;
-            s2.x *= -1;
-            s2.y *= -1;
-            s2.z *= -1;
-
+            Scale(e, -1, e);
             dp *= -1;
         }
 
         if (dp > 0.9995)
         {
-            Sub(q, s2, r2);
-            Scale(q, t, q);
-            Add(q, r2, q);
+            Subtract(res, e, s);
+            Scale(res, t, res);
+            Add(res, s, res);
         }
         else
         {
@@ -153,12 +149,9 @@ struct Quaternion
             double sinTheta = Sin(theta);
             double sinTheta0 = Sin(Theta0);
 
-            double sr = Cos(theta) - dp * sinTheta / sinTheta0;
-            double ss = sinTheta / sinTheta0;
-
-            Scale(r2, sr, r2);
-            Scale(s2, ss, s2);
-            Add(q, r2, s2);
+            Scale(s, Cos(theta) - dp * sinTheta / sinTheta0, s);
+            Scale(e, sinTheta / sinTheta0, e);
+            Add(res, s, e);
         }
     }
 }
