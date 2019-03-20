@@ -53,6 +53,26 @@ struct Quaternion
         return (x, y, z);
     }
 
+    void Invert()
+    {
+        x *= -1;
+        y *= -1;
+        z *= -1;
+    }
+
+    Vector3 Rotate(Vector3 v)
+    {
+        Quaternion v4;
+        v4.SetXyz(v);
+
+        Invert();
+        Multiply(v4, v4, self);
+        Invert();
+        Multiply(v4, self, v4);
+
+        return v4.GetXyz();
+    }
+
     static void Multiply(out Quaternion q, in Quaternion r, in Quaternion s)
     {
         double rw = r.w;
@@ -108,6 +128,13 @@ class FlyingPlayer : DoomPlayer
             double fm = scale * cmd.forwardMove / maxForwardMove;
             double sm = scale * cmd.sideMove / maxSideMove;
             double um = scale * cmd.upMove / maxUpMove;
+
+            Vector3 forward, right, up;
+            [forward, right, up] = GetAxes();
+
+            Vector3 wishVel = fm * forward - sm * right + um * up;
+
+            Accelerate(wishVel.Unit(), wishVel.Length(), 10.0);
         }
     }
 
@@ -131,6 +158,14 @@ class FlyingPlayer : DoomPlayer
         A_SetAngle(newAngle, SPF_Interpolate);
         A_SetPitch(newPitch, SPF_Interpolate);
         A_SetRoll(newRoll, SPF_Interpolate);
+
+        Vector3 forward, right, up;
+        [forward, right, up] = GetAxes();
+
+        Console.Printf("Rotation = (%.2f, %.2f, %.2f, %.2f)", r.w, r.x, r.y, r.z);
+        Console.Printf("Forward = (%.2f, %.2f, %.2f)", forward.x, forward.y, forward.z);
+        Console.Printf("Right = (%.2f, %.2f, %.2f)", right.x, right.y, right.z);
+        Console.Printf("Up = (%.2f, %.2f, %.2f)", up.x, up.y, up.z);
     }
 
 
@@ -150,5 +185,35 @@ class FlyingPlayer : DoomPlayer
         double scale = total ? speed * maxCmd / total : 0;
 
         return scale;
+    }
+
+
+    virtual void Accelerate(Vector3 wishDir, double wishSpeed, double accel)
+    {
+        double currentSpeed = vel dot wishDir;
+
+        double addSpeed = wishSpeed - currentSpeed;
+        if (addSpeed <= 0) return;
+
+        double accelSpeed = Min(accel * wishSpeed, addSpeed);
+
+        vel += accelSpeed * wishDir;
+    }
+
+    Vector3, Vector3, Vector3 GetAxes()
+    {
+        Quaternion r;
+        r.FromEulerAngle(angle, pitch, roll);
+
+        Vector3 forward = (1, 0, 0);
+        forward = r.Rotate(forward);
+
+        Vector3 right = (0, 1, 0);
+        right = r.Rotate(right);
+
+        Vector3 up = (0, 0, 1);
+        up = r.Rotate(up);
+
+        return forward, right, up;
     }
 }
