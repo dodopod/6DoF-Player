@@ -199,6 +199,8 @@ class FlyingPlayer : DoomPlayer
         double cmdPitch = -cmd.pitch * 360 / maxPitch;
         double cmdRoll = cmd.roll * 360 / maxRoll;
 
+        //if (cmdRoll) Console.Printf("%d", cmdRoll);
+
         Quaternion s;
         s.FromEulerAngle(cmdYaw, cmdPitch, cmdRoll);
         Quaternion.multiply(r, r, s);
@@ -293,5 +295,26 @@ class FlyingPlayer : DoomPlayer
     bool JustPressed(int bt)
     {
         return (player.cmd.buttons & bt) && !(player.oldButtons & bt);
+    }
+}
+
+
+class RollHandler : EventHandler
+{
+    const rollAmount = 4 * 65536.0 / 360;
+
+    int roll;
+
+    override void UiTick()
+    {
+        players[consolePlayer].cmd.roll = roll;
+    }
+
+    override void NetworkProcess(ConsoleEvent e)
+    {
+        if (e.name ~== "+rollleft") roll = -rollAmount;
+        else if (e.name ~== "-rollleft") roll = 0;
+        else if (e.name ~== "+rollright") roll = rollAmount;
+        else if (e.name ~== "-rollright") roll = 0;
     }
 }

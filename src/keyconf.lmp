@@ -1,0 +1,11 @@
+AddKeySection "Flight Controls" FlightControls
+
+AddMenuKey "Roll Left" +rollleft
+Alias +rollleft "netevent +rollleft"
+Alias -rollleft "netevent -rollleft"
+DefaultBind Q +rollleft
+
+AddMenuKey "Roll Right" +rollright
+Alias +rollright "netevent +rollright"
+Alias -rollright "netevent -rollright"
+DefaultBind E +rollright
