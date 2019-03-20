@@ -124,8 +124,6 @@ class FlyingPlayer : DoomPlayer
 
     override void HandleMovement()
     {
-        //player.onground = (pos.z <= floorz) || bOnMobj || bMBFBouncer || (player.cheats & CF_NOCLIP2);
-
         if (reactionTime) --reactionTime;   // Player is frozen
         else
         {
@@ -210,16 +208,6 @@ class FlyingPlayer : DoomPlayer
         A_SetAngle(newAngle, SPF_Interpolate);
         A_SetPitch(newPitch, SPF_Interpolate);
         A_SetRoll(newRoll, SPF_Interpolate);
-
-        /*
-        Vector3 forward, right, up;
-        [forward, right, up] = GetAxes();
-
-        Console.Printf("Rotation = (%.2f, %.2f, %.2f, %.2f)", r.w, r.x, r.y, r.z);
-        Console.Printf("Forward = (%.2f, %.2f, %.2f)", forward.x, forward.y, forward.z);
-        Console.Printf("Right = (%.2f, %.2f, %.2f)", right.x, right.y, right.z);
-        Console.Printf("Up = (%.2f, %.2f, %.2f)", up.x, up.y, up.z);
-        */
     }
 
 
