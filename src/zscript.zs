@@ -5,6 +5,14 @@ struct Quaternion
 {
     double w, x, y, z;
 
+    void Copy(in Quaternion other)
+    {
+        w = other.w;
+        x = other.x;
+        y = other.y;
+        z = other.z;
+    }
+
     void FromEulerAngle(double yaw, double pitch, double roll)
     {
         double cy = Cos(yaw * 0.5);
@@ -73,6 +81,30 @@ struct Quaternion
         return v4.GetXyz();
     }
 
+    static void Add(out Quaternion q, in Quaternion r, in Quaternion s)
+    {
+        q.w = r.w + s.w;
+        q.x = r.x + s.x;
+        q.y = r.y + s.y;
+        q.z = r.z + s.z;
+    }
+
+    static void Sub(out Quaternion q, in Quaternion r, in Quaternion s)
+    {
+        q.w = r.w - s.w;
+        q.x = r.x - s.x;
+        q.y = r.y - s.y;
+        q.z = r.z - s.z;
+    }
+
+    static void Scale(out Quaternion q, in double a, in Quaternion r)
+    {
+        q.w = a * r.w;
+        q.x = a * r.x;
+        q.y = a * r.y;
+        q.z = a * r.z;
+    }
+
     static void Multiply(out Quaternion q, in Quaternion r, in Quaternion s)
     {
         double rw = r.w;
@@ -82,6 +114,52 @@ struct Quaternion
 
         q.w = sw * rw - (sv dot rv);
         q.SetXyz(sw * rv + rw * sv + (rv cross sv));
+    }
+
+    static double DotProduct(in Quaternion q, in Quaternion r)
+    {
+        return q.w * r.w + q.x * r.x + q.y * r.y + q.z * r.z;
+    }
+
+    static void Slerp(out Quaternion q, in Quaternion r, in Quaternion s, double t)
+    {
+        Quaternion r2;
+        r2.Copy(r);
+        Quaternion s2;
+        s2.Copy(s);
+
+        double dp = DotProduct(r2, s2);
+
+        if (dp < 0)
+        {
+            s2.w *= -1;
+            s2.x *= -1;
+            s2.y *= -1;
+            s2.z *= -1;
+
+            dp *= -1;
+        }
+
+        if (dp > 0.9995)
+        {
+            Sub(q, s2, r2);
+            Scale(q, t, q);
+            Add(q, r2, q);
+        }
+        else
+        {
+            double theta0 = ACos(dp);
+            double theta = t * theta0;
+            double sinTheta = Sin(theta);
+            double sinTheta0 = Sin(Theta0);
+
+            double sr = Cos(theta) - dp * sinTheta / sinTheta0;
+            double ss = sinTheta / sinTheta0;
+
+            Scale(r2, sr, r2);
+            Scale(s2, ss, s2);
+            Add(q, r2, s2);
+        }
     }
 }
 
@@ -113,6 +191,7 @@ class FlyingPlayer : DoomPlayer
 
 
     double upMove;
+    Quaternion targetRotation;
 
 
     override void PostBeginPlay()
@@ -120,6 +199,7 @@ class FlyingPlayer : DoomPlayer
         Super.PostBeginPlay();
 
         bFly = true;
+        targetRotation.FromEulerAngle(angle, pitch, roll);
     }
 
 
@@ -191,19 +271,20 @@ class FlyingPlayer : DoomPlayer
 
     virtual void RotatePlayer()
     {
-        Quaternion r;
-        r.FromEulerAngle(angle, pitch, roll);
-
+        // Find target rotation
         UserCmd cmd = player.cmd;
         double cmdYaw = cmd.yaw * 360 / maxYaw;
         double cmdPitch = -cmd.pitch * 360 / maxPitch;
         double cmdRoll = cmd.roll * 360 / maxRoll;
 
-        //if (cmdRoll) Console.Printf("%d", cmdRoll);
+        Quaternion input;
+        input.FromEulerAngle(cmdYaw, cmdPitch, cmdRoll);
+        Quaternion.Multiply(targetRotation, targetRotation, input);
 
-        Quaternion s;
-        s.FromEulerAngle(cmdYaw, cmdPitch, cmdRoll);
-        Quaternion.multiply(r, r, s);
+        Quaternion r;
+        r.FromEulerAngle(angle, pitch, roll);
+
+        Quaternion.Slerp(r, r, targetRotation, 0.2);
 
         double newAngle, newPitch, newRoll;
         [newAngle, newPitch, newRoll] = r.ToEulerAngle();
