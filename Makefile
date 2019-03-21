@@ -1,5 +1,5 @@
 sources=$(shell find src -type f)
-target=flying-player.pk3
+target=6dof-player.pk3
 
 demo-sources=$(shell find demo -type f)
 demo-target=demo.pk3

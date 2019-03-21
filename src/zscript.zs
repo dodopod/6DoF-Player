@@ -157,7 +157,7 @@ struct Quaternion
 }
 
 
-class FlyingPlayer : DoomPlayer
+class SixDoFPlayer : DoomPlayer
 {
     Property UpMove : upMove;
 
@@ -165,7 +165,7 @@ class FlyingPlayer : DoomPlayer
     Default
     {
         Speed 320 / ticRate;
-        FlyingPlayer.UpMove 1.0;
+        SixDoFPlayer.UpMove 1.0;
 
         +NoGravity
         +RollSprite
