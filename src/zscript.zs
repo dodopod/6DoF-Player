@@ -3,14 +3,13 @@ version "3.7.2"
 
 struct Quaternion
 {
-    double w, x, y, z;
+    double w;
+    Vector3 v;
 
     void Copy(in Quaternion other)
     {
         w = other.w;
-        x = other.x;
-        y = other.y;
-        z = other.z;
+        v = other.v;
     }
 
     void FromEulerAngle(double yaw, double pitch, double roll)
@@ -23,102 +22,80 @@ struct Quaternion
         double sr = Sin(roll * 0.5);
 
         w = cy * cp * cr + sy * sp * sr;
-        x = cy * cp * sr - sy * sp * cr;
-        y = sy * cp * sr + cy * sp * cr;
-        z = sy * cp * cr - cy * sp * sr;
+        v.x = cy * cp * sr - sy * sp * cr;
+        v.y = sy * cp * sr + cy * sp * cr;
+        v.z = sy * cp * cr - cy * sp * sr;
     }
 
     float, float, float ToEulerAngle()
     {
         // Roll
-        double sinRCosP = 2 * (w * x + y * z);
-        double cosRCosP = 1 - 2 * (x * x + y * y);
+        double sinRCosP = 2 * (w * v.x + v.y * v.z);
+        double cosRCosP = 1 - 2 * (v.x * v.x + v.y * v.y);
         double roll = Atan2(sinRCosP, cosRCosP);
 
         // Pitch
-        double sinP = 2 * (w * y - z * x);
+        double sinP = 2 * (w * v.y - v.z * v.x);
         double pitch;
         if (Abs(sinP) >= 1) pitch = 90 * (sinP < 0 ? -1 : 1);
         else pitch = Asin(sinP);
 
         // Yaw
-        double sinYCosP = 2 * (w * z + x * y);
-        double cosYCosP = 1 - 2 * (y * y + z * z);
+        double sinYCosP = 2 * (w * v.z + v.x * v.y);
+        double cosYCosP = 1 - 2 * (v.y * v.y + v.z * v.z);
         double yaw = Atan2(sinYCosP, cosYCosP);
 
         return yaw, pitch, roll;
     }
 
-    void SetXyz(Vector3 v)
-    {
-        x = v.x;
-        y = v.y;
-        z = v.z;
-    }
-
-    Vector3 GetXyz()
-    {
-        return (x, y, z);
-    }
-
     void Invert()
     {
-        x *= -1;
-        y *= -1;
-        z *= -1;
+        v = -v;
     }
 
     Vector3 Rotate(Vector3 v)
     {
         Quaternion v4;
-        v4.SetXyz(v);
+        v4.v = v;
 
         Invert();
         Multiply(v4, v4, self);
         Invert();
         Multiply(v4, self, v4);
 
-        return v4.GetXyz();
+        return v4.v;
     }
 
     static void Add(out Quaternion res, in Quaternion lhs, in Quaternion rhs)
     {
         res.w = lhs.w + rhs.w;
-        res.x = lhs.x + rhs.x;
-        res.y = lhs.y + rhs.y;
-        res.z = lhs.z + rhs.z;
+        res.v = lhs.v + rhs.v;
     }
 
     static void Subtract(out Quaternion res, in Quaternion lhs, in Quaternion rhs)
     {
         res.w = lhs.w - rhs.w;
-        res.x = lhs.x - rhs.x;
-        res.y = lhs.y - rhs.y;
-        res.z = lhs.z - rhs.z;
+        res.v = lhs.v - rhs.v;
     }
 
     static void Scale(out Quaternion res, in double lhs, in Quaternion rhs)
     {
         res.w = lhs * rhs.w;
-        res.x = lhs * rhs.x;
-        res.y = lhs * rhs.y;
-        res.z = lhs * rhs.z;
+        res.v = lhs * rhs.v;
     }
 
     static void Multiply(out Quaternion res, in Quaternion lhs, in Quaternion rhs)
     {
         double lw = lhs.w;
-        Vector3 lv = lhs.GetXyz();
         double rw = rhs.w;
-        Vector3 rv = rhs.GetXyz();
 
-        res.w = rw * lw - (rv dot lv);
-        res.SetXyz(rw * lv + lw * rv + (lv cross rv));
+        res.w = rw * lw - rhs.v dot lhs.v;
+        res.v = rw * lhs.v + lw * rhs.v + lhs.v cross rhs.v;
     }
 
     static double DotProduct(in Quaternion lhs, in Quaternion rhs)
     {
-        return lhs.w * rhs.w + lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
+        return lhs.w * rhs.w + lhs.v dot rhs.v;
     }
 
     static void Slerp(out Quaternion res, in Quaternion start, in Quaternion end, double t)
@@ -274,6 +251,7 @@ class SixDoFPlayer : DoomPlayer
         input.FromEulerAngle(cmdYaw, cmdPitch, cmdRoll);
         Quaternion.Multiply(targetRotation, targetRotation, input);
 
+        // Interpolate to it
         Quaternion r;
         r.FromEulerAngle(angle, pitch, roll);
 
