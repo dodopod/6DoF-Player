@@ -1,4 +1,4 @@
-class SixDoFPlayer : DoomPlayer
+class SixDoFPlayer : PlayerPawn
 {
     Property UpMove : upMove;
 
