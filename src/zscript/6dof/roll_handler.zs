@@ -11,9 +11,7 @@ class RollHandler : EventHandler
 
     override void NetworkProcess(ConsoleEvent e)
     {
-        if (e.name ~== "+rollleft") roll = -rollAmount;
-        else if (e.name ~== "-rollleft") roll = 0;
-        else if (e.name ~== "+rollright") roll = rollAmount;
-        else if (e.name ~== "-rollright") roll = 0;
+        if (e.name ~== "+rollleft" || e.name ~== "-rollright") roll -= rollAmount;
+        else if (e.name ~== "+rollright" || e.name ~== "-rollleft") roll += rollAmount;
     }
 }
